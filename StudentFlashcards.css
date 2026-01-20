@@ -1,0 +1,768 @@
+/* Main Container - IDE-like styling */
+.flashcard-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
+  width: 100vw;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  overflow: auto;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+}
+
+/* Home Screen */
+.flashcard-home {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+.flashcard-header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.flashcard-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #cccccc;
+  font-weight: 600;
+}
+
+.flashcard-subtitle {
+  font-size: 1.1rem;
+  color: #858585;
+  margin: 0;
+}
+
+/* Mode Selection Grid */
+.flashcard-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.flashcard-mode-option {
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 8px;
+  padding: 2.5rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.flashcard-mode-option:hover:not(.disabled) {
+  background: #2d2d30;
+  border-color: #505050;
+  transform: translateY(-2px);
+}
+
+.flashcard-mode-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mode-option-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  color: white;
+}
+
+.flashcard-mode-option h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #cccccc;
+  font-weight: 600;
+}
+
+.flashcard-mode-option p {
+  color: #858585;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* Cards Overview */
+.flashcard-overview {
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.flashcard-overview h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #cccccc;
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.flashcard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.flashcard-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.flashcard-grid::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.flashcard-grid::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 4px;
+}
+
+.flashcard-preview {
+  position: relative;
+  cursor: pointer;
+}
+
+.flashcard-preview img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #3e3e42;
+}
+
+.flashcard-preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.flashcard-preview:hover .flashcard-preview-overlay {
+  opacity: 1;
+}
+
+.delete-card-btn {
+  padding: 0.5rem 1rem;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.delete-card-btn:hover {
+  background: #d32f2f;
+}
+
+.flashcard-preview-name {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #d4d4d4;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Manual & Roster Screens */
+.flashcard-manual,
+.flashcard-roster {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: #858585;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+  transition: all 0.2s;
+}
+
+.back-button:hover {
+  background: #2d2d30;
+  border-color: #505050;
+  color: #cccccc;
+}
+
+.flashcard-panel {
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 8px;
+  padding: 2rem;
+}
+
+.flashcard-panel h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #cccccc;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+/* Image Upload Area */
+.image-upload-area {
+  border: 2px dashed #3e3e42;
+  border-radius: 8px;
+  padding: 3rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  transition: border-color 0.2s;
+  position: relative;
+  cursor: pointer;
+}
+
+.image-upload-area:hover {
+  border-color: #0e639c;
+}
+
+.upload-placeholder {
+  color: #858585;
+}
+
+.upload-placeholder svg {
+  margin-bottom: 1rem;
+}
+
+.upload-text {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #d4d4d4;
+}
+
+.upload-subtext {
+  font-size: 0.9rem;
+  color: #858585;
+  margin: 0;
+}
+
+.file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.image-preview-container {
+  position: relative;
+}
+
+.image-preview {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+  border: 1px solid #3e3e42;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.remove-image-btn:hover {
+  background: #d32f2f;
+}
+
+/* Name Input */
+.name-input-group {
+  margin-bottom: 1.5rem;
+}
+
+.name-input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #cccccc;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.name-input {
+  width: 100%;
+  padding: 0.75rem;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.name-input:focus {
+  outline: none;
+  border-color: #0e639c;
+}
+
+.name-input::placeholder {
+  color: #858585;
+}
+
+/* Add Card Button */
+.add-card-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background: #0e639c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.add-card-btn:hover:not(.disabled) {
+  background: #1177bb;
+}
+
+.add-card-btn.disabled {
+  background: #3e3e42;
+  color: #858585;
+  cursor: not-allowed;
+}
+
+/* Recently Added */
+.recently-added {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #3e3e42;
+}
+
+.recently-added h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #cccccc;
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.recent-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.recent-cards-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.recent-cards-list::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.recent-cards-list::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 4px;
+}
+
+.recent-card-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #1e1e1e;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #3e3e42;
+}
+
+.recent-card-item img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #3e3e42;
+}
+
+.recent-card-item span {
+  flex: 1;
+  color: #d4d4d4;
+  font-size: 1rem;
+}
+
+.delete-recent-btn {
+  padding: 0.5rem;
+  background: transparent;
+  color: #f44336;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.delete-recent-btn:hover {
+  background: rgba(244, 67, 54, 0.1);
+}
+
+/* Roster Upload Area */
+.roster-upload-area {
+  border: 2px dashed #3e3e42;
+  border-radius: 8px;
+  padding: 3rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  transition: border-color 0.2s;
+  position: relative;
+  cursor: pointer;
+  color: #858585;
+}
+
+.roster-upload-area:hover {
+  border-color: #7c3aed;
+}
+
+.roster-upload-area svg {
+  margin-bottom: 1rem;
+}
+
+/* Info Banner */
+.info-banner {
+  background: #3a2a1a;
+  border: 1px solid #6b5028;
+  border-radius: 6px;
+  padding: 1.5rem;
+}
+
+.info-banner h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #fbbf24;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.info-banner p {
+  margin: 0;
+  color: #d4d4d4;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Practice Mode */
+.flashcard-practice {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.practice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.practice-controls {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #252526;
+  color: #d4d4d4;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  background: #2d2d30;
+  border-color: #505050;
+}
+
+/* Practice Stats */
+.practice-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #cccccc;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value.stat-correct {
+  color: #10b981;
+}
+
+.stat-value.stat-incorrect {
+  color: #ef4444;
+}
+
+.stat-value.stat-mastered {
+  color: #8b5cf6;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #858585;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Practice Card */
+.practice-card {
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 12px;
+  padding: 3rem;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.mastered-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #10b981;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.card-content {
+  text-align: center;
+}
+
+.card-image-container {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.card-image {
+  max-width: 500px;
+  width: 100%;
+  max-height: 500px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #3e3e42;
+}
+
+.card-reveal {
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.reveal-content {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.student-name {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #cccccc;
+  margin-bottom: 2rem;
+}
+
+.grade-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.grade-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.incorrect-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.incorrect-btn:hover {
+  background: #dc2626;
+}
+
+.correct-btn {
+  background: #10b981;
+  color: white;
+}
+
+.correct-btn:hover {
+  background: #059669;
+}
+
+.show-name-btn {
+  padding: 1.5rem 3rem;
+  background: #0e639c;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.show-name-btn:hover {
+  background: #1177bb;
+  transform: translateY(-2px);
+}
+
+/* Practice Navigation */
+.practice-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #252526;
+  color: #d4d4d4;
+  border: 1px solid #3e3e42;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  background: #2d2d30;
+  border-color: #505050;
+}
+
+.keyboard-hints {
+  color: #858585;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .flashcard-home,
+  .flashcard-manual,
+  .flashcard-roster,
+  .flashcard-practice {
+    padding: 1rem;
+  }
+
+  .flashcard-header h1 {
+    font-size: 2rem;
+  }
+
+  .flashcard-mode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .practice-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .practice-navigation {
+    flex-direction: column;
+  }
+
+  .keyboard-hints {
+    order: -1;
+  }
+
+  .student-name {
+    font-size: 1.75rem;
+  }
+
+  .grade-buttons {
+    flex-direction: column;
+  }
+
+  .grade-btn {
+    width: 100%;
+  }
+}
