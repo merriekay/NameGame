@@ -8,9 +8,12 @@ import {
   X,
   RotateCcw,
   Plus,
+  Edit2,
+  Save,
 } from "lucide-react";
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { decksAPI } from './services/api';
 
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -28,20 +31,25 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
  * - Persistent storage across sessions
  */
 
-function StudentFlashcards() {
+function StudentFlashcards({ user, onLogout }) {
   // State management
   const [mode, setMode] = useState("home"); // 'home', 'manual', 'roster', 'practice', 'deckSelect'
   const [decks, setDecks] = useState([]); // Array of {id, name, cards}
   const [currentDeckId, setCurrentDeckId] = useState(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showingName, setShowingName] = useState(false);
-  const [cardProgress, setCardProgress] = useState({}); // {deckId: {cardId: correctCount}}
   const [hideMastered, setHideMastered] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Manual entry state
   const [tempImage, setTempImage] = useState(null);
   const [tempName, setTempName] = useState("");
   const [tempDeckName, setTempDeckName] = useState("");
+
+  // Edit mode state
+  const [editingCardId, setEditingCardId] = useState(null);
+  const [editingCardName, setEditingCardName] = useState("");
 
   // Statistics
   const [sessionStats, setSessionStats] = useState({
@@ -49,52 +57,60 @@ function StudentFlashcards() {
     incorrect: 0,
   });
 
-  // Load decks from storage on mount
+  // Load decks from API on mount
   useEffect(() => {
     loadDecks();
   }, []);
 
   // Helper functions
-  const getCurrentDeck = () => decks.find(d => d.id === currentDeckId);
+  const getCurrentDeck = () => decks.find(d => d._id === currentDeckId);
   const getCurrentDeckCards = () => {
     const deck = getCurrentDeck();
     if (!deck) return [];
 
     if (hideMastered) {
-      return deck.cards.filter(card => {
-        const correctCount = cardProgress[currentDeckId]?.[card.id] || 0;
-        return correctCount < 3;
-      });
+      return deck.cards.filter(card => (card.progress || 0) < 3);
     }
     return deck.cards;
   };
 
-  // Storage functions - using localStorage
-  const loadDecks = () => {
+  // API functions
+  const loadDecks = async () => {
     try {
-      const saved = localStorage.getItem('flashcardDecks');
-      const savedProgress = localStorage.getItem('cardProgress');
-      if (saved) {
-        setDecks(JSON.parse(saved));
-      }
-      if (savedProgress) {
-        setCardProgress(JSON.parse(savedProgress));
-      }
-    } catch (error) {
-      console.error('Error loading decks:', error);
-      setDecks([]);
-      setCardProgress({});
+      setLoading(true);
+      setError(null);
+      const data = await decksAPI.getAll();
+      setDecks(data);
+    } catch (err) {
+      console.error('Error loading decks:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const saveDecks = (newDecks) => {
-    setDecks(newDecks);
-    localStorage.setItem('flashcardDecks', JSON.stringify(newDecks));
+  const createDeck = async (name, cards = []) => {
+    try {
+      const newDeck = await decksAPI.create(name, cards);
+      setDecks([...decks, newDeck]);
+      return newDeck;
+    } catch (err) {
+      console.error('Error creating deck:', err);
+      setError(err.message);
+      throw err;
+    }
   };
 
-  const saveProgress = (newProgress) => {
-    setCardProgress(newProgress);
-    localStorage.setItem('cardProgress', JSON.stringify(newProgress));
+  const updateDeck = async (deckId, updates) => {
+    try {
+      const updatedDeck = await decksAPI.update(deckId, updates);
+      setDecks(decks.map(d => d._id === deckId ? updatedDeck : d));
+      return updatedDeck;
+    } catch (err) {
+      console.error('Error updating deck:', err);
+      setError(err.message);
+      throw err;
+    }
   };
 
   // Image handling
@@ -127,72 +143,72 @@ function StudentFlashcards() {
   };
 
   // Manual card creation
-  const addManualCard = () => {
+  const addManualCard = async () => {
     if (!tempImage || !tempName.trim() || !tempDeckName.trim()) return;
 
-    const newCard = {
-      id: Date.now(),
-      image: tempImage,
-      name: tempName.trim(),
-      created: new Date().toISOString(),
-    };
+    try {
+      // Find or create deck
+      let deck = decks.find(d => d.name === tempDeckName.trim());
 
-    // Find or create deck
-    let deck = decks.find(d => d.name === tempDeckName.trim());
-    if (deck) {
-      // Add to existing deck
-      const updatedDecks = decks.map(d =>
-        d.id === deck.id
-          ? {...d, cards: [...d.cards, newCard]}
-          : d
-      );
-      saveDecks(updatedDecks);
-    } else {
-      // Create new deck
-      const newDeck = {
-        id: Date.now(),
-        name: tempDeckName.trim(),
-        cards: [newCard],
-        created: new Date().toISOString(),
-      };
-      saveDecks([...decks, newDeck]);
+      if (deck) {
+        // Add to existing deck
+        await decksAPI.addCard(deck._id, tempName.trim(), tempImage);
+        await loadDecks(); // Reload to get updated deck
+      } else {
+        // Create new deck with this card
+        await createDeck(tempDeckName.trim(), [{
+          name: tempName.trim(),
+          image: tempImage,
+          progress: 0
+        }]);
+      }
+
+      // Reset form
+      setTempImage(null);
+      setTempName("");
+    } catch (err) {
+      alert('Error adding card: ' + err.message);
     }
-
-    // Reset form
-    setTempImage(null);
-    setTempName("");
   };
 
   // Roster parsing state
   const [rosterProcessing, setRosterProcessing] = useState(false);
   const [rosterPreview, setRosterPreview] = useState(null);
-
-  // Extract class name from filename (e.g., "CS178_S1.pdf" -> "CS178_S1")
-  const extractClassName = (filename) => {
-    // Remove file extension
-    const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
-    // Clean up the name
-    return nameWithoutExt.trim() || 'Untitled Class';
-  };
+  const [rosterClassName, setRosterClassName] = useState('');
+  const [rosterFile, setRosterFile] = useState(null);
 
   // Roster parsing
-  const handleRosterUpload = async (e) => {
+  const handleRosterFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    setRosterFile(file);
+
+    // Auto-suggest class name from filename
+    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+    setRosterClassName(nameWithoutExt.trim() || '');
+  };
+
+  const handleRosterUpload = async () => {
+    if (!rosterFile || !rosterClassName.trim()) {
+      alert('Please select a file and enter a class name');
+      return;
+    }
 
     setRosterProcessing(true);
 
     try {
-      // Extract class name from filename
-      const className = extractClassName(file.name);
-
-      if (file.type === 'application/pdf') {
+      if (rosterFile.type === 'application/pdf') {
         // Convert PDF to images and process
-        await processPDFRoster(file, className);
+        await processPDFRoster(rosterFile, rosterClassName.trim());
       } else {
         // Process image roster
-        await processImageRoster(file, className);
+        await processImageRoster(rosterFile, rosterClassName.trim());
       }
+
+      // Reset form
+      setRosterFile(null);
+      setRosterClassName('');
     } catch (error) {
       console.error('Error processing roster:', error);
       alert('Error processing roster. Please try manual entry or a different file format.');
@@ -229,14 +245,6 @@ function StudentFlashcards() {
         };
 
         await page.render(renderContext).promise;
-
-        // Debug: Log canvas info
-        console.log(`Page ${pageNum} rendered - Canvas: ${canvas.width}x${canvas.height}`);
-        console.log(`Page ${pageNum} viewport - Width: ${viewport.width}, Height: ${viewport.height}, Scale: ${viewport.scale}`);
-
-        // Create a debug image of the full page
-        const pageDebugUrl = canvas.toDataURL('image/jpeg', 0.5);
-        console.log(`Page ${pageNum} preview (first 100 chars):`, pageDebugUrl.substring(0, 100));
 
         // Debug coordinate tool disabled - we have the correct measurements now
         if (false && pageNum === 1) {
@@ -324,46 +332,25 @@ function StudentFlashcards() {
         allStudents.push(...students);
       }
 
-      // Add all students as cards
-      const newCards = allStudents.map((student, index) => ({
-        id: Date.now() + index,
+      // Prepare cards for API
+      const newCards = allStudents.map(student => ({
         image: student.image,
         name: student.name,
-        created: new Date().toISOString(),
+        progress: 0
       }));
 
-      // Debug: Log first student info (no popup)
-      if (newCards.length > 0) {
-        console.log('First student card:', {
-          name: newCards[0].name,
-          imageLength: newCards[0].image?.length,
-          imagePreview: newCards[0].image?.substring(0, 100)
-        });
-      }
-
-      // Create or update deck
+      // Create or update deck via API
       const existingDeck = decks.find(d => d.name === className);
       if (existingDeck) {
-        // Add to existing deck
-        const updatedDecks = decks.map(d =>
-          d.id === existingDeck.id
-            ? {...d, cards: [...d.cards, ...newCards]}
-            : d
-        );
-        saveDecks(updatedDecks);
+        // Add cards to existing deck
+        const updatedCards = [...existingDeck.cards, ...newCards];
+        await updateDeck(existingDeck._id, { cards: updatedCards });
       } else {
         // Create new deck
-        const newDeck = {
-          id: Date.now(),
-          name: className,
-          cards: newCards,
-          created: new Date().toISOString(),
-        };
-        saveDecks([...decks, newDeck]);
+        await createDeck(className, newCards);
       }
 
       setMode('home');
-
       alert(`Successfully imported ${newCards.length} students to deck "${className}"!`);
 
     } catch (error) {
@@ -378,20 +365,17 @@ function StudentFlashcards() {
     // Get all text items with their positions
     const textItems = textContent.items;
 
-    // Build full text for debugging
+    // Build full text for parsing
     const fullText = textItems.map(item => item.str).join(' ');
-    console.log('Page text:', fullText);
 
     // Extract all names - looking for "Name: LastName, FirstName"
     // Names can have hyphens, apostrophes, spaces
     const nameMatches = Array.from(fullText.matchAll(/Name:\s*([A-Za-z\-']+),\s*([A-Za-z\s]+?)(?=\s+Pronouns)/g));
-    console.log('Found names:', nameMatches.length);
 
     const names = nameMatches.map(match => {
       const lastName = match[1].trim();
       const firstName = match[2].trim();
       const fullName = `${firstName} ${lastName}`;
-      console.log('Parsed name:', fullName);
       return fullName;
     });
 
@@ -424,26 +408,9 @@ function StudentFlashcards() {
     const photoHeight = pdfPhotoHeight * scale;
     const photoSpacing = pdfPhotoSpacing * scale;
 
-    console.log('PDF coordinates (scaled):', {
-      scale,
-      photoWidth,
-      photoHeight,
-      photoX,
-      firstPhotoY,
-      photoSpacing
-    });
-
     for (let i = 0; i < names.length; i++) {
       // Calculate exact Y position for this student's photo
       const photoY = firstPhotoY + (i * photoSpacing);
-
-      console.log(`Extracting photo ${i + 1}:`, {
-        name: names[i],
-        x: photoX,
-        y: photoY,
-        width: photoWidth,
-        height: photoHeight
-      });
 
       // Extract the photo region from the canvas
       const photoCanvas = document.createElement('canvas');
@@ -470,7 +437,6 @@ function StudentFlashcards() {
       });
     }
 
-    console.log(`Extracted ${students.length} students from page`);
     return students;
   };
 
@@ -521,95 +487,122 @@ function StudentFlashcards() {
     setCurrentCardIndex((currentCardIndex - 1 + cards.length) % cards.length);
   };
 
-  const markCorrect = () => {
+  const markCorrect = async () => {
     const card = getCurrentCard();
     if (!card) return;
 
     setSessionStats((prev) => ({ ...prev, correct: prev.correct + 1 }));
 
-    // Update progress for this card
-    const newProgress = { ...cardProgress };
-    if (!newProgress[currentDeckId]) {
-      newProgress[currentDeckId] = {};
+    // Update progress for this card via API
+    try {
+      const newProgress = (card.progress || 0) + 1;
+      await decksAPI.updateCardProgress(currentDeckId, card._id, newProgress);
+      await loadDecks(); // Reload to get updated progress
+    } catch (err) {
+      console.error('Error updating progress:', err);
     }
-    const currentCount = newProgress[currentDeckId][card.id] || 0;
-    newProgress[currentDeckId][card.id] = currentCount + 1;
-    saveProgress(newProgress);
 
     nextCard();
   };
 
-  const markIncorrect = () => {
+  const markIncorrect = async () => {
     const card = getCurrentCard();
     if (!card) return;
 
     setSessionStats((prev) => ({ ...prev, incorrect: prev.incorrect + 1 }));
 
-    // Reset progress for this card
-    const newProgress = { ...cardProgress };
-    if (!newProgress[currentDeckId]) {
-      newProgress[currentDeckId] = {};
+    // Reset progress for this card via API
+    try {
+      await decksAPI.updateCardProgress(currentDeckId, card._id, 0);
+      await loadDecks(); // Reload to get updated progress
+    } catch (err) {
+      console.error('Error resetting progress:', err);
     }
-    newProgress[currentDeckId][card.id] = 0;
-    saveProgress(newProgress);
 
     nextCard();
   };
 
-  const resetProgress = () => {
+  const resetProgress = async () => {
     setSessionStats({ correct: 0, incorrect: 0 });
-    // Reset progress for current deck
-    const newProgress = { ...cardProgress };
-    newProgress[currentDeckId] = {};
-    saveProgress(newProgress);
+
+    // Reset progress for all cards in current deck
+    const deck = getCurrentDeck();
+    if (deck) {
+      try {
+        const resetCards = deck.cards.map(c => ({ ...c, progress: 0 }));
+        await updateDeck(currentDeckId, { cards: resetCards });
+      } catch (err) {
+        console.error('Error resetting progress:', err);
+      }
+    }
+
     setCurrentCardIndex(0);
     setShowingName(false);
   };
 
-  const shuffleCards = () => {
+  const shuffleCards = async () => {
     const deck = getCurrentDeck();
     if (!deck) return;
 
     const shuffled = [...deck.cards].sort(() => Math.random() - 0.5);
-    const updatedDecks = decks.map(d =>
-      d.id === currentDeckId ? { ...d, cards: shuffled } : d
-    );
-    saveDecks(updatedDecks);
-    setCurrentCardIndex(0);
-    setShowingName(false);
+    try {
+      await updateDeck(currentDeckId, { cards: shuffled });
+      setCurrentCardIndex(0);
+      setShowingName(false);
+    } catch (err) {
+      console.error('Error shuffling cards:', err);
+    }
   };
 
   // Delete card
-  const deleteCard = (deckId, cardId) => {
-    const updatedDecks = decks.map(d => {
-      if (d.id === deckId) {
-        return { ...d, cards: d.cards.filter(c => c.id !== cardId) };
-      }
-      return d;
-    }).filter(d => d.cards.length > 0); // Remove empty decks
-    saveDecks(updatedDecks);
+  const deleteCard = async (deckId, cardId) => {
+    try {
+      await decksAPI.deleteCard(deckId, cardId);
+      await loadDecks(); // Reload decks
 
-    if (currentDeckId === deckId) {
-      const cards = getCurrentDeckCards();
-      if (currentCardIndex >= cards.length) {
-        setCurrentCardIndex(Math.max(0, cards.length - 1));
+      if (currentDeckId === deckId) {
+        const cards = getCurrentDeckCards();
+        if (currentCardIndex >= cards.length) {
+          setCurrentCardIndex(Math.max(0, cards.length - 1));
+        }
       }
+    } catch (err) {
+      console.error('Error deleting card:', err);
+      alert('Error deleting card: ' + err.message);
     }
   };
 
   // Delete entire deck
-  const deleteDeck = (deckId) => {
-    const updatedDecks = decks.filter(d => d.id !== deckId);
-    saveDecks(updatedDecks);
+  const deleteDeck = async (deckId) => {
+    try {
+      await decksAPI.delete(deckId);
+      await loadDecks(); // Reload decks
 
-    // Clear progress for this deck
-    const newProgress = { ...cardProgress };
-    delete newProgress[deckId];
-    saveProgress(newProgress);
+      if (currentDeckId === deckId) {
+        setCurrentDeckId(null);
+        setMode('home');
+      }
+    } catch (err) {
+      console.error('Error deleting deck:', err);
+      alert('Error deleting deck: ' + err.message);
+    }
+  };
 
-    if (currentDeckId === deckId) {
-      setCurrentDeckId(null);
-      setMode('home');
+  // Edit card name
+  const updateCardName = async (deckId, cardId, newName) => {
+    const deck = decks.find(d => d._id === deckId);
+    if (!deck) return;
+
+    try {
+      const updatedCards = deck.cards.map(c =>
+        c._id === cardId ? { ...c, name: newName } : c
+      );
+      await updateDeck(deckId, { cards: updatedCards });
+      setEditingCardId(null);
+      setEditingCardName("");
+    } catch (err) {
+      console.error('Error updating card name:', err);
+      alert('Error updating card name: ' + err.message);
     }
   };
 
@@ -649,18 +642,59 @@ function StudentFlashcards() {
   // Calculate deck stats
   const getDeckStats = (deck) => {
     const totalCards = deck.cards.length;
-    const progress = cardProgress[deck.id] || {};
-    const masteredCount = Object.values(progress).filter(count => count >= 3).length;
+    const masteredCount = deck.cards.filter(c => (c.progress || 0) >= 3).length;
     const masteredPercent = totalCards > 0 ? Math.round((masteredCount / totalCards) * 100) : 0;
     return { totalCards, masteredCount, masteredPercent };
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-editor-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-accent-blue mx-auto mb-4"></div>
+          <p className="text-text-primary text-lg">Loading your decks...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-editor-bg flex items-center justify-center p-8">
+        <div className="max-w-md bg-editor-bg-light border border-accent-red rounded-lg p-8 text-center">
+          <X size={48} className="text-accent-red mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-text-primary mb-2">Error Loading Decks</h2>
+          <p className="text-text-secondary mb-6">{error}</p>
+          <button
+            onClick={loadDecks}
+            className="bg-accent-blue hover:bg-accent-blue-hover text-white px-6 py-3 rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Render functions for each mode
   const renderHome = () => (
     <div className="min-h-screen bg-editor-bg p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4 text-text-primary">Student Name Flashcards</h1>
+        <div className="text-center mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex-1"></div>
+            <h1 className="text-4xl font-bold text-text-primary flex-1">Student Name Flashcards</h1>
+            <div className="flex-1 flex justify-end">
+              <button
+                onClick={onLogout}
+                className="text-text-secondary hover:text-text-primary transition-colors text-sm"
+              >
+                Logout ({user?.name})
+              </button>
+            </div>
+          </div>
           <p className="text-lg text-text-secondary">
             Learn your students' names before class starts
           </p>
@@ -724,7 +758,7 @@ function StudentFlashcards() {
             {decks.map((deck) => {
               const stats = getDeckStats(deck);
               return (
-                <div key={deck.id} className="bg-editor-bg-light border border-editor-border rounded-lg p-6">
+                <div key={deck._id} className="bg-editor-bg-light border border-editor-border rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex-1">
                       <h4 className="text-xl font-semibold text-text-primary mb-2">{deck.name}</h4>
@@ -738,7 +772,7 @@ function StudentFlashcards() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
-                          setCurrentDeckId(deck.id);
+                          setCurrentDeckId(deck._id);
                           setCurrentCardIndex(0);
                           setMode("practice");
                         }}
@@ -747,7 +781,7 @@ function StudentFlashcards() {
                         Practice
                       </button>
                       <button
-                        onClick={() => deleteDeck(deck.id)}
+                        onClick={() => deleteDeck(deck._id)}
                         className="bg-accent-red hover:bg-accent-red-hover text-white px-4 py-2 rounded transition-colors"
                       >
                         Delete
@@ -756,10 +790,10 @@ function StudentFlashcards() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                     {deck.cards.slice(0, 12).map((card) => {
-                      const correctCount = cardProgress[deck.id]?.[card.id] || 0;
-                      const isMastered = correctCount >= 3;
+                      const isMastered = (card.progress || 0) >= 3;
+                      const isEditing = editingCardId === card._id;
                       return (
-                        <div key={card.id} className="group relative">
+                        <div key={card._id} className="group relative">
                           <div className="rounded-lg overflow-hidden border border-editor-border" style={{aspectRatio: '111/147', position: 'relative', backgroundColor: '#fff'}}>
                             <img
                               src={card.image}
@@ -771,8 +805,50 @@ function StudentFlashcards() {
                                 <Check size={12} />
                               </div>
                             )}
+                            <button
+                              onClick={() => {
+                                setEditingCardId(card._id);
+                                setEditingCardName(card.name);
+                              }}
+                              className="absolute top-1 left-1 bg-accent-blue text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Edit name"
+                            >
+                              <Edit2 size={12} />
+                            </button>
                           </div>
-                          <p className="text-xs text-text-primary truncate mt-1">{card.name}</p>
+                          {isEditing ? (
+                            <div className="flex gap-1 mt-1">
+                              <input
+                                type="text"
+                                value={editingCardName}
+                                onChange={(e) => setEditingCardName(e.target.value)}
+                                className="flex-1 text-xs bg-editor-bg border border-accent-blue rounded px-1 py-0.5 text-text-primary"
+                                autoFocus
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    updateCardName(deck._id, card._id, editingCardName);
+                                  }
+                                }}
+                              />
+                              <button
+                                onClick={() => updateCardName(deck._id, card._id, editingCardName)}
+                                className="text-accent-green hover:text-accent-green-hover"
+                              >
+                                <Save size={12} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingCardId(null);
+                                  setEditingCardName("");
+                                }}
+                                className="text-accent-red hover:text-accent-red-hover"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-text-primary truncate mt-1">{card.name}</p>
+                          )}
                         </div>
                       );
                     })}
@@ -810,9 +886,9 @@ function StudentFlashcards() {
             const stats = getDeckStats(deck);
             return (
               <button
-                key={deck.id}
+                key={deck._id}
                 onClick={() => {
-                  setCurrentDeckId(deck.id);
+                  setCurrentDeckId(deck._id);
                   setCurrentCardIndex(0);
                   setSessionStats({ correct: 0, incorrect: 0 });
                   setMode("practice");
@@ -866,7 +942,7 @@ function StudentFlashcards() {
             />
             <datalist id="existing-decks">
               {decks.map(deck => (
-                <option key={deck.id} value={deck.name} />
+                <option key={deck._id} value={deck.name} />
               ))}
             </datalist>
             <p className="text-xs text-text-secondary mt-2">Select an existing deck or create a new one</p>
@@ -945,11 +1021,11 @@ function StudentFlashcards() {
             <div className="mt-8 pt-8 border-t border-editor-border">
               <h3 className="text-lg font-semibold mb-4 text-text-primary">Your Decks</h3>
               {decks.map(deck => (
-                <div key={deck.id} className="mb-4">
+                <div key={deck._id} className="mb-4">
                   <h4 className="text-sm font-semibold text-text-secondary mb-2">{deck.name} ({deck.cards.length})</h4>
                   <div className="grid grid-cols-4 gap-2">
                     {deck.cards.slice(-4).reverse().map((card) => (
-                      <div key={card.id} className="relative group">
+                      <div key={card._id} className="relative group">
                         <img src={card.image} alt={card.name} className="w-full aspect-[111/147] rounded object-cover" />
                         <p className="text-xs text-text-primary truncate mt-1">{card.name}</p>
                       </div>
@@ -978,7 +1054,31 @@ function StudentFlashcards() {
         <div className="bg-editor-bg-light border border-editor-border rounded-lg p-6 md:p-10 shadow-xl">
           <h2 className="text-3xl font-bold mb-8 text-text-primary">Upload Class Roster</h2>
 
-          <div className={`border-2 border-dashed rounded-lg p-12 mb-8 relative min-h-[280px] flex items-center justify-center transition-all duration-200 ${
+          {/* Class name input */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-3 text-text-primary uppercase tracking-wide">
+              Deck / Class Name
+            </label>
+            <input
+              type="text"
+              value={rosterClassName}
+              onChange={(e) => setRosterClassName(e.target.value)}
+              placeholder="e.g., CS178_S1"
+              list="existing-decks-roster"
+              className="w-full bg-editor-bg border border-editor-border rounded-lg px-5 py-3.5 text-text-primary text-lg placeholder-text-muted focus:outline-none focus:border-accent-purple focus:ring-2 focus:ring-accent-purple focus:ring-opacity-20 transition-all"
+            />
+            <datalist id="existing-decks-roster">
+              {decks.map(deck => (
+                <option key={deck._id} value={deck.name} />
+              ))}
+            </datalist>
+            <p className="text-xs text-text-secondary mt-2">
+              This will be auto-filled from your filename, but you can edit it
+            </p>
+          </div>
+
+          {/* File upload area */}
+          <div className={`border-2 border-dashed rounded-lg p-12 mb-6 relative min-h-[240px] flex items-center justify-center transition-all duration-200 ${
             rosterProcessing
               ? 'border-accent-purple bg-editor-bg'
               : 'border-editor-border hover:border-accent-purple hover:bg-editor-bg'
@@ -989,11 +1089,29 @@ function StudentFlashcards() {
                 <p className="text-text-primary text-lg font-medium">Processing roster...</p>
                 <p className="text-text-secondary text-sm mt-2">This may take a moment</p>
               </div>
+            ) : rosterFile ? (
+              <div className="text-center">
+                <div className="bg-accent-purple bg-opacity-10 rounded-lg p-6 mb-4">
+                  <p className="text-text-primary font-semibold mb-1">{rosterFile.name}</p>
+                  <p className="text-text-secondary text-sm">
+                    {rosterFile.type === 'application/pdf' ? 'PDF Document' : 'Image File'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setRosterFile(null);
+                    setRosterClassName('');
+                  }}
+                  className="text-accent-red hover:underline text-sm"
+                >
+                  Remove file
+                </button>
+              </div>
             ) : (
               <div className="text-center py-8">
                 <Upload size={56} className="mx-auto mb-5 text-accent-purple" />
                 <p className="text-text-primary mb-2 text-lg font-medium">
-                  Upload your class roster PDF or screenshot
+                  Click to upload your class roster
                 </p>
                 <p className="text-sm text-text-secondary mb-4">
                   PDF files or images (PNG, JPG)
@@ -1001,12 +1119,25 @@ function StudentFlashcards() {
                 <input
                   type="file"
                   accept="image/*,application/pdf"
-                  onChange={handleRosterUpload}
+                  onChange={handleRosterFileSelect}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
               </div>
             )}
           </div>
+
+          {/* Upload button */}
+          <button
+            onClick={handleRosterUpload}
+            disabled={!rosterFile || !rosterClassName.trim() || rosterProcessing}
+            className={`w-full py-4 rounded-lg font-semibold text-lg transition-all duration-200 mb-8 ${
+              !rosterFile || !rosterClassName.trim() || rosterProcessing
+                ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                : "bg-accent-purple hover:bg-accent-purple-hover text-white shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            }`}
+          >
+            {rosterProcessing ? 'Processing...' : 'Process Roster'}
+          </button>
 
           <div className="space-y-6">
             <div className="bg-accent-purple bg-opacity-10 border border-accent-purple rounded-lg p-6">
@@ -1168,15 +1299,15 @@ function StudentFlashcards() {
 
           {/* Flashcard */}
           <div className="bg-editor-bg-light border border-editor-border rounded-lg p-8 mb-6 relative">
-            {currentCard && (cardProgress[currentDeckId]?.[currentCard.id] || 0) >= 3 && (
+            {currentCard && (currentCard.progress || 0) >= 3 && (
               <div className="absolute top-4 right-4 bg-accent-green text-white px-3 py-1 rounded-full flex items-center gap-2 text-sm">
                 <Check size={16} />
                 Mastered
               </div>
             )}
-            {currentCard && (cardProgress[currentDeckId]?.[currentCard.id] || 0) > 0 && (cardProgress[currentDeckId]?.[currentCard.id] || 0) < 3 && (
+            {currentCard && (currentCard.progress || 0) > 0 && (currentCard.progress || 0) < 3 && (
               <div className="absolute top-4 right-4 bg-accent-blue text-white px-3 py-1 rounded-full text-sm">
-                {cardProgress[currentDeckId][currentCard.id]}/3
+                {currentCard.progress}/3
               </div>
             )}
 
