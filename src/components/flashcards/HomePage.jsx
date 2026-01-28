@@ -16,7 +16,7 @@ function HomePage({
   onEditCancel,
   onEditNameChange,
   onPracticeDeck,
-  onDeleteDeck
+  onDeleteDeck,
 }) {
   return (
     <div className="min-h-screen bg-editor-bg p-8">
@@ -24,7 +24,9 @@ function HomePage({
         <div className="text-center mb-8">
           <div className="flex justify-between items-center mb-4">
             <div className="flex-1"></div>
-            <h1 className="text-4xl font-bold text-text-primary flex-1">Student Name Flashcards</h1>
+            <h1 className="text-4xl font-bold text-text-primary flex-1">
+              Recall: The Name Game
+            </h1>
             <div className="flex-1 flex justify-end">
               <button
                 onClick={onLogout}
@@ -48,8 +50,12 @@ function HomePage({
             <div className="w-20 h-20 bg-accent-green rounded-2xl flex items-center justify-center mb-6 group-hover:bg-accent-green-hover transition-colors shadow-lg">
               <Plus size={36} className="text-white" />
             </div>
-            <h2 className="text-2xl font-bold mb-3 text-text-primary">Add Manually</h2>
-            <p className="text-text-secondary text-base">Paste or upload photos one at a time</p>
+            <h2 className="text-2xl font-bold mb-3 text-text-primary">
+              Add Manually
+            </h2>
+            <p className="text-text-secondary text-base">
+              Paste or upload photos one at a time
+            </p>
           </button>
 
           {/* Roster Upload */}
@@ -60,8 +66,12 @@ function HomePage({
             <div className="w-20 h-20 bg-accent-purple rounded-2xl flex items-center justify-center mb-6 group-hover:bg-accent-purple-hover transition-colors shadow-lg">
               <Users size={36} className="text-white" />
             </div>
-            <h2 className="text-2xl font-bold mb-3 text-text-primary">Upload Roster</h2>
-            <p className="text-text-secondary text-base">Auto-extract from class roster PDF</p>
+            <h2 className="text-2xl font-bold mb-3 text-text-primary">
+              Upload Roster
+            </h2>
+            <p className="text-text-secondary text-base">
+              Auto-extract from class roster PDF... (it's about 90% accuate)
+            </p>
           </button>
 
           {/* Practice */}
@@ -74,18 +84,22 @@ function HomePage({
                 : "hover:bg-editor-bg-lighter hover:border-accent-blue hover:shadow-xl"
             }`}
           >
-            <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-6 transition-colors shadow-lg ${
-              decks.length > 0
-                ? "bg-accent-blue group-hover:bg-accent-blue-hover"
-                : "bg-gray-600"
-            }`}>
+            <div
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-6 transition-colors shadow-lg ${
+                decks.length > 0
+                  ? "bg-accent-blue group-hover:bg-accent-blue-hover"
+                  : "bg-gray-600"
+              }`}
+            >
               <RotateCcw size={36} className="text-white" />
             </div>
-            <h2 className="text-2xl font-bold mb-3 text-text-primary">Practice</h2>
+            <h2 className="text-2xl font-bold mb-3 text-text-primary">
+              Practice
+            </h2>
             <p className="text-text-secondary text-base">
               {decks.length === 0
                 ? "Add cards first"
-                : `${decks.length} deck${decks.length !== 1 ? 's' : ''} available`}
+                : `${decks.length} deck${decks.length !== 1 ? "s" : ""} available`}
             </p>
           </button>
         </div>
@@ -93,7 +107,9 @@ function HomePage({
         {/* Decks overview */}
         {decks.length > 0 && (
           <div className="space-y-4">
-            <h3 className="text-2xl font-semibold text-text-primary">Your Decks</h3>
+            <h3 className="text-2xl font-semibold text-text-primary">
+              Your Decks
+            </h3>
             {decks.map((deck) => (
               <DeckCard
                 key={deck._id}
